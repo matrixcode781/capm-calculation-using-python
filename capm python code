@@ -1,0 +1,60 @@
+import numpy as np
+import pandas as pd
+import yfinance as yf
+
+def calculate_capm(risk_free_rate, beta, market_return):
+    """
+    CAPM model se expected return calculate karta hai.
+    - risk_free_rate: Risk-free rate (e.g., 0.12 for 12%)
+    - beta: Asset ka beta (e.g., BTC ka beta ~1.5)
+    - market_return: Expected market return (e.g., 0.15 for 15%)
+    """
+    expected_return = risk_free_rate + beta * (market_return - risk_free_rate)
+    return expected_return
+
+# Step 1: Data collect kar (BTC aur KSE-100 ya S&P 500)
+def get_data(ticker, market_ticker, start_date, end_date):
+    asset = yf.download(ticker, start=start_date, end=end_date)['Adj Close']
+    market = yf.download(market_ticker, start=start_date, end=end_date)['Adj Close']
+    # Monthly returns calculate kar
+    asset_returns = asset.pct_change().dropna()
+    market_returns = market.pct_change().dropna()
+    return asset_returns, market_returns
+
+# Step 2: Beta calculate kar
+def calculate_beta(asset_returns, market_returns):
+    covariance = np.cov(asset_returns, market_returns)[0][1]
+    market_variance = np.var(market_returns)
+    beta = covariance / market_variance
+    return beta
+
+# Example inputs
+ticker = 'BTC-USD'  # Bitcoin
+market_ticker = '^GSPC'  # S&P 500 (Pakistan ke liye ^PSX agar available ho)
+start_date = '2023-01-01'
+end_date = '2025-01-01'
+
+# Data fetch kar
+try:
+    btc_returns, market_returns = get_data(ticker, market_ticker, start_date, end_date)
+    beta = calculate_beta(btc_returns, market_returns)
+except Exception as e:
+    print(f"Error fetching data: {e}")
+    beta = 1.5  # Fallback beta if data nahi milta
+
+# User inputs
+risk_free_rate = float(input("Enter risk-free rate (e.g., 0.12 for 12%): "))
+market_return = float(input("Enter expected market return (e.g., 0.15 for 15%): "))
+print(f"Calculated Beta for BTC: {beta:.2f}")
+
+# CAPM calculation
+expected_return = calculate_capm(risk_free_rate, beta, market_return)
+
+# Output in table
+data = {
+    'Input': ['Risk-Free Rate', 'Beta', 'Market Return', 'Expected Return for BTC'],
+    'Value': [f"{risk_free_rate*100:.2f}%", f"{beta:.2f}", f"{market_return*100:.2f}%", f"{expected_return*100:.2f}%"]
+}
+df = pd.DataFrame(data)
+print("\nCAPM Calculation Results:")
+print(df)
